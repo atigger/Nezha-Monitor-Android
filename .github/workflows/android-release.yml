@@ -104,6 +104,8 @@ jobs:
           - If signing secrets are not configured, the release APK may be unsigned.
           - This release was generated automatically by GitHub Actions.
           EOF
+          printf '\n## 更新记录\n\n' >> release-notes.md
+          sed '1,/^## /d; /^## /,$d' CHANGELOG.md >> release-notes.md
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2

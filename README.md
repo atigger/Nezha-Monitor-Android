@@ -10,7 +10,7 @@
 - **新版哪吒兼容**：增加 Personal Access Token（PAT）认证，保留游客访问和账号密码登录。
 - **设置与安全**：重新组织连接、认证和显示设置；清理凭据日志并排除含凭据配置的系统备份。
 
-当前源码版本为 `2.0.0`（`versionCode = 2`），详细变更见 [CHANGELOG.md](./CHANGELOG.md)。尚未创建 `v2.0.0` 标签或对应 Release。
+当前版本为 `2.0.0`（`versionCode = 2`），详细变更见 [CHANGELOG.md](./CHANGELOG.md)，APK 下载见 [v2.0.0 Release](https://github.com/atigger/Nezha-Monitor-Android/releases/tag/v2.0.0)。
 
 ## 功能特性
 
