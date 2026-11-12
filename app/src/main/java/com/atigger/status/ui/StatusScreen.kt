@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,27 +33,19 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,18 +55,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.atigger.status.R
 import com.atigger.status.data.AppLanguage
 import com.atigger.status.data.LiveUpdateMetric
 import com.atigger.status.data.MonitorConfig
@@ -206,47 +199,31 @@ fun StatusScreen(
             .windowInsetsPadding(WindowInsets.safeDrawing),
         topBar = {
             Column {
-                TopAppBar(
-                    title = {
-                        Column {
-                            Text(strings.appTitle, fontWeight = FontWeight.SemiBold)
-                            if (state is StatusUiState.Success) {
-                                Text(
-                                    text = strings.updated(state.lastUpdated),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    },
-                    actions = {
-                        FilterChip(
-                            selected = showOnlineOnly,
-                            onClick = { showOnlineOnly = !showOnlineOnly },
-                            label = { Text(strings.online) },
-                            colors = FilterChipDefaults.filterChipColors()
+                MonitorHeader(strings, onRetry, onOpenSettings)
+                if (uiState is StatusUiState.Success && LocalConfiguration.current.screenHeightDp >= 480) {
+                    FleetOverview(uiState.servers, uiState.lastUpdated, strings)
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 22.dp, end = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(strings.dashboardSubtitle, modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    FilterChip(
+                        selected = showOnlineOnly,
+                        onClick = { showOnlineOnly = !showOnlineOnly },
+                        label = { Text(strings.online) },
+                        shape = RoundedCornerShape(8.dp),
+                        border = null,
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = Color.Transparent,
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
                         )
-                        IconButton(onClick = onRetry) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_refresh),
-                                contentDescription = strings.refresh
-                            )
-                        }
-                        IconButton(onClick = onOpenSettings) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_settings),
-                                contentDescription = strings.settings
-                            )
-                        }
-                    }
-                )
-                if (state is StatusUiState.Success && state.groups.isNotEmpty()) {
-                    GroupTabs(
-                        groups = state.groups,
-                        selectedTabIndex = selectedTabIndex,
-                        onSelectGroup = { selectedGroupId = it },
-                        strings = strings
                     )
+                }
+                if (state is StatusUiState.Success && state.groups.isNotEmpty()) {
+                    GroupTabs(state.groups, selectedTabIndex, { selectedGroupId = it }, strings)
                 }
             }
         }
@@ -260,7 +237,6 @@ fun StatusScreen(
                 servers = state.servers,
                 groups = state.groups,
                 selectedGroupId = selectedGroupId,
-                lastUpdated = state.lastUpdated,
                 favoriteServer = favoriteServer,
                 favoriteServerId = favoriteServerId,
                 onToggleFavorite = onToggleFavorite,
@@ -278,7 +254,6 @@ private fun SwipeableServerListPane(
     servers: List<ServerUiModel>,
     groups: List<ServerGroupUiModel>,
     selectedGroupId: Int?,
-    lastUpdated: String,
     favoriteServer: ServerUiModel?,
     favoriteServerId: Int?,
     onToggleFavorite: (Int) -> Unit,
@@ -371,7 +346,6 @@ private fun SwipeableServerListPane(
                         servers = servers,
                         groups = groups,
                         selectedGroupId = adjacentGroupId,
-                        lastUpdated = lastUpdated,
                         favoriteServer = favoriteServer,
                         favoriteServerId = favoriteServerId,
                         onToggleFavorite = onToggleFavorite,
@@ -391,7 +365,6 @@ private fun SwipeableServerListPane(
                     servers = servers,
                     groups = groups,
                     selectedGroupId = selectedGroupId,
-                    lastUpdated = lastUpdated,
                     favoriteServer = favoriteServer,
                     favoriteServerId = favoriteServerId,
                     onToggleFavorite = onToggleFavorite,
@@ -433,16 +406,17 @@ private fun SettingsScaffold(
             .background(MaterialTheme.colorScheme.background)
             .windowInsetsPadding(WindowInsets.safeDrawing),
         topBar = {
-            TopAppBar(
-                title = { Text(strings.monitorSettings, fontWeight = FontWeight.SemiBold) },
-                actions = {
-                    if (canCancel) {
-                        TextButton(onClick = onCancelSettings) {
-                            Text(strings.cancel)
-                        }
-                    }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("NEZHA / SETTINGS", modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (canCancel) {
+                    TextButton(onClick = onCancelSettings) { Text("‹  ${strings.cancel}") }
                 }
-            )
+            }
         }
     ) { innerPadding ->
         MonitorConfigPane(
@@ -471,6 +445,7 @@ private fun MonitorConfigPane(
     var requiresLogin by rememberSaveable(initialConfig.requiresLogin) { mutableStateOf(initialConfig.requiresLogin) }
     var username by rememberSaveable(initialConfig.username) { mutableStateOf(initialConfig.username) }
     var password by rememberSaveable(initialConfig.password) { mutableStateOf(initialConfig.password) }
+    var apiToken by rememberSaveable(initialConfig.apiToken) { mutableStateOf(initialConfig.apiToken) }
     var languageName by rememberSaveable(initialConfig.language.name) { mutableStateOf(initialConfig.language.name) }
     var baseUrlSchemeMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var liveUpdateMetricName by rememberSaveable(initialConfig.liveUpdateMetric.name) {
@@ -478,197 +453,163 @@ private fun MonitorConfigPane(
     }
 
     Column(
-        modifier = modifier
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        modifier = modifier.verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-            )
+        MonitorMark()
+        Spacer(Modifier.height(4.dp))
+        Text(strings.monitorSettings, style = MaterialTheme.typography.headlineLarge)
+        Text(strings.settingsSubtitle, style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        FormSectionHeader("01", strings.connection)
+        Text(strings.connectionHint, style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.padding(18.dp)) {
-                Text(
-                    text = strings.connection,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = strings.connectionHint,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            Box {
+                OutlinedButton(
+                    onClick = { baseUrlSchemeMenuExpanded = true },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.height(56.dp)
+                ) { Text("$baseUrlScheme://") }
+                DropdownMenu(
+                    expanded = baseUrlSchemeMenuExpanded,
+                    onDismissRequest = { baseUrlSchemeMenuExpanded = false }
                 ) {
-                    Box {
-                        OutlinedButton(
-                            onClick = { baseUrlSchemeMenuExpanded = true },
-                            modifier = Modifier.height(56.dp)
-                        ) {
-                            Text("$baseUrlScheme://")
-                        }
-                        DropdownMenu(
-                            expanded = baseUrlSchemeMenuExpanded,
-                            onDismissRequest = { baseUrlSchemeMenuExpanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("https://") },
-                                onClick = {
-                                    baseUrlScheme = "https"
-                                    baseUrlSchemeMenuExpanded = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("http://") },
-                                onClick = {
-                                    baseUrlScheme = "http"
-                                    baseUrlSchemeMenuExpanded = false
-                                }
-                            )
-                        }
-                    }
-                    OutlinedTextField(
-                        value = baseUrlAddress,
-                        onValueChange = { baseUrlAddress = it },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        label = { Text(strings.monitorUrl) },
-                        placeholder = { Text("nezha.example.com") }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = strings.languageLabel,
-                    style = MaterialTheme.typography.titleSmall
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = strings.languageHint,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = languageName == AppLanguage.ZH.name,
-                        onClick = { languageName = AppLanguage.ZH.name },
-                        label = { Text(strings.chinese) }
-                    )
-                    FilterChip(
-                        selected = languageName == AppLanguage.EN.name,
-                        onClick = { languageName = AppLanguage.EN.name },
-                        label = { Text(strings.english) }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = strings.liveUpdateDisplayLabel,
-                    style = MaterialTheme.typography.titleSmall
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = strings.liveUpdateDisplayHint,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
-                            selected = liveUpdateMetricName == LiveUpdateMetric.CPU.name,
-                            onClick = { liveUpdateMetricName = LiveUpdateMetric.CPU.name },
-                            label = { Text(strings.metricCpu) }
-                        )
-                        FilterChip(
-                            selected = liveUpdateMetricName == LiveUpdateMetric.MEMORY.name,
-                            onClick = { liveUpdateMetricName = LiveUpdateMetric.MEMORY.name },
-                            label = { Text(strings.metricMemory) }
+                    listOf("https", "http").forEach { scheme ->
+                        DropdownMenuItem(
+                            text = { Text("$scheme://") },
+                            onClick = {
+                                baseUrlScheme = scheme
+                                baseUrlSchemeMenuExpanded = false
+                            }
                         )
                     }
-                    FilterChip(
-                        selected = liveUpdateMetricName == LiveUpdateMetric.NETWORK.name,
-                        onClick = { liveUpdateMetricName = LiveUpdateMetric.NETWORK.name },
-                        label = { Text(strings.metricNetwork) }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = strings.requireLogin,
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                    }
-                    Switch(
-                        checked = requiresLogin,
-                        onCheckedChange = { requiresLogin = it }
-                    )
-                }
-
-                if (requiresLogin) {
-                    Spacer(modifier = Modifier.height(14.dp))
-                    OutlinedTextField(
-                        value = username,
-                        onValueChange = { username = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        label = { Text(strings.username) }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        label = { Text(strings.password) },
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-                    )
-                }
-
-                if (!errorMessage.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = errorMessage,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
-                Button(
-                    onClick = {
-                        onSaveSettings(
-                            MonitorConfig(
-                                baseUrl = buildMonitorUrl(baseUrlScheme, baseUrlAddress),
-                                requiresLogin = requiresLogin,
-                                username = username.trim(),
-                                password = password,
-                                language = AppLanguage.valueOf(languageName),
-                                liveUpdateMetric = LiveUpdateMetric.valueOf(liveUpdateMetricName)
-                            )
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(strings.saveConfig)
                 }
             }
+            OutlinedTextField(
+                value = baseUrlAddress,
+                onValueChange = { baseUrlAddress = it },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                label = { Text(strings.monitorUrl) },
+                placeholder = { Text("nezha.example.com") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
+            )
         }
+
+        FormSectionHeader("02", strings.authenticationSection)
+        OutlinedTextField(
+            value = apiToken,
+            onValueChange = { apiToken = it },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            label = { Text(strings.apiToken) },
+            supportingText = { Text(strings.apiTokenHint) },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(strings.requireLogin, style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f))
+            Switch(
+                checked = requiresLogin,
+                onCheckedChange = { requiresLogin = it },
+                enabled = apiToken.isBlank()
+            )
+        }
+        if (requiresLogin && apiToken.isBlank()) {
+            OutlinedTextField(
+                value = username,
+                onValueChange = { username = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                label = { Text(strings.username) }
+            )
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                label = { Text(strings.password) },
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+            )
+        }
+
+        FormSectionHeader("03", strings.appearanceSection)
+        Text(strings.languageLabel, style = MaterialTheme.typography.titleSmall)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = languageName == AppLanguage.ZH.name,
+                onClick = { languageName = AppLanguage.ZH.name },
+                shape = RoundedCornerShape(9.dp),
+                label = { Text(strings.chinese) }
+            )
+            FilterChip(
+                selected = languageName == AppLanguage.EN.name,
+                onClick = { languageName = AppLanguage.EN.name },
+                shape = RoundedCornerShape(9.dp),
+                label = { Text(strings.english) }
+            )
+        }
+        Text(strings.liveUpdateDisplayLabel, style = MaterialTheme.typography.titleSmall)
+        Text(strings.liveUpdateDisplayHint, style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf(
+                LiveUpdateMetric.CPU to strings.metricCpu,
+                LiveUpdateMetric.MEMORY to strings.metricMemory,
+                LiveUpdateMetric.NETWORK to strings.metricNetwork
+            ).forEach { (metric, label) ->
+                FilterChip(
+                    selected = liveUpdateMetricName == metric.name,
+                    onClick = { liveUpdateMetricName = metric.name },
+                    shape = RoundedCornerShape(9.dp),
+                    label = { Text(label) }
+                )
+            }
+        }
+
+        if (!errorMessage.isNullOrBlank()) {
+            Text(errorMessage, color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(vertical = 8.dp))
+        }
+        Spacer(Modifier.height(12.dp))
+        Button(
+            onClick = {
+                onSaveSettings(
+                    MonitorConfig(
+                        baseUrl = buildMonitorUrl(baseUrlScheme, baseUrlAddress),
+                        requiresLogin = requiresLogin,
+                        username = username.trim(),
+                        password = password,
+                        apiToken = apiToken.trim(),
+                        language = AppLanguage.valueOf(languageName),
+                        liveUpdateMetric = LiveUpdateMetric.valueOf(liveUpdateMetricName)
+                    )
+                )
+            },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth().height(52.dp)
+        ) { Text(strings.saveConfig) }
+        Spacer(Modifier.height(24.dp))
     }
 }
 
@@ -717,7 +658,8 @@ private fun LoadingPane(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            CircularProgressIndicator()
+            MonitorMark(modifier = Modifier.padding(bottom = 12.dp))
+            CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.dp)
             Text(
                 text = stage.title(strings),
                 style = MaterialTheme.typography.titleMedium,
@@ -736,12 +678,9 @@ private fun LoadingPane(
                 )
             }
             if (!state.notice.isNullOrBlank()) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    )
+                Box(
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.secondaryContainer)
                 ) {
                     Text(
                         text = state.notice,
@@ -751,12 +690,9 @@ private fun LoadingPane(
                     )
                 }
             }
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                )
+            Column(
+                modifier = Modifier.fillMaxWidth()
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
             ) {
                 Column(
                     modifier = Modifier.padding(18.dp),
@@ -830,7 +766,7 @@ private fun LoadingStepRow(
     strings: AppStrings
 ) {
     val color = when (state) {
-        LoadingStepState.Done -> Color(0xFF1B8A5A)
+        LoadingStepState.Done -> MaterialTheme.colorScheme.secondary
         LoadingStepState.Active -> MaterialTheme.colorScheme.primary
         LoadingStepState.Pending -> MaterialTheme.colorScheme.outline
         LoadingStepState.Fallback -> Color(0xFFB26A00)
@@ -958,7 +894,6 @@ private fun ServerListPane(
     servers: List<ServerUiModel>,
     groups: List<ServerGroupUiModel>,
     selectedGroupId: Int?,
-    lastUpdated: String,
     favoriteServer: ServerUiModel?,
     favoriteServerId: Int?,
     onToggleFavorite: (Int) -> Unit,
@@ -968,20 +903,25 @@ private fun ServerListPane(
     val visibleServers = selectedGroupId
         ?.let { groupId -> servers.filter { groupId in it.groupIds } }
         ?: servers
+    val listState = rememberLazyListState()
+    LaunchedEffect(selectedGroupId) {
+        listState.scrollToItem(0)
+    }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier
             .fillMaxSize()
-            .padding(innerPadding),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .padding(innerPadding)
+            .background(MaterialTheme.colorScheme.surface),
+        contentPadding = PaddingValues(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         if (selectedGroupId == null) {
             item {
-                LiveUpdateCard(
+                PinnedServerStrip(
                     favoriteServer = favoriteServer,
                     favoriteServerId = favoriteServerId,
-                    lastUpdated = lastUpdated,
                     onToggleFavorite = onToggleFavorite,
                     strings = strings
                 )
@@ -990,18 +930,14 @@ private fun ServerListPane(
         item {
             Text(
                 text = strings.nodes(visibleServers.size),
-                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 12.dp),
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         if (visibleServers.isEmpty()) {
             item {
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer
-                    )
-                ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                     Column(modifier = Modifier.padding(18.dp)) {
                         Text(
                             text = strings.noNodes,
@@ -1025,7 +961,7 @@ private fun ServerListPane(
                         GroupHeader(group.name)
                     }
                     items(groupServers, key = { "${group.id}-${it.id}" }) { server ->
-                        ServerCard(
+                        ServerRow(
                             server = server,
                             isFavorite = favoriteServerId == server.id,
                             onToggleFavorite = onToggleFavorite,
@@ -1041,7 +977,7 @@ private fun ServerListPane(
                     GroupHeader(strings.ungrouped)
                 }
                 items(ungroupedServers, key = { "ungrouped-${it.id}" }) { server ->
-                    ServerCard(
+                    ServerRow(
                         server = server,
                         isFavorite = favoriteServerId == server.id,
                         onToggleFavorite = onToggleFavorite,
@@ -1051,7 +987,7 @@ private fun ServerListPane(
             }
         } else {
             items(visibleServers, key = { it.id }) { server ->
-                ServerCard(
+                ServerRow(
                     server = server,
                     isFavorite = favoriteServerId == server.id,
                     onToggleFavorite = onToggleFavorite,
@@ -1064,81 +1000,16 @@ private fun ServerListPane(
 
 @Composable
 private fun GroupHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
-    )
-}
-
-@Composable
-private fun LiveUpdateCard(
-    favoriteServer: ServerUiModel?,
-    favoriteServerId: Int?,
-    lastUpdated: String,
-    onToggleFavorite: (Int) -> Unit,
-    strings: AppStrings
-) {
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+    Row(
+        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 22.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Column(modifier = Modifier.padding(18.dp)) {
-            Text(
-                text = strings.followedNode,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            if (favoriteServer != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = favoriteServer.name,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = strings.updated(lastUpdated),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        StatusBadge(
-                            favoriteServer.isOnline,
-                            if (favoriteServer.isOnline) strings.onlineStatus else strings.offlineStatus
-                        )
-                        TextButton(onClick = { onToggleFavorite(favoriteServer.id) }) {
-                            Text(strings.unfollow)
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                InfoLine(strings.cpu, favoriteServer.cpuLine)
-                InfoLine(strings.usage, favoriteServer.usageLine)
-                InfoLine(strings.network, favoriteServer.networkLine)
-                InfoLine(strings.traffic, favoriteServer.trafficLine)
-                favoriteServer.uptimeLine?.let { InfoLine(strings.uptime, it) }
-                favoriteServer.ipLine?.let { InfoLine(strings.ip, it) }
-            } else {
-                Text(
-                    text = if (favoriteServerId == null) strings.followHint else strings.followMissingHint,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+        Box(Modifier.size(4.dp, 14.dp).clip(RoundedCornerShape(2.dp))
+            .background(MaterialTheme.colorScheme.primary))
+        Text(title, style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -1149,147 +1020,5 @@ private fun GroupTabs(
     onSelectGroup: (Int?) -> Unit,
     strings: AppStrings
 ) {
-    ScrollableTabRow(
-        selectedTabIndex = selectedTabIndex,
-        edgePadding = 12.dp
-    ) {
-        Tab(
-            selected = selectedTabIndex == 0,
-            onClick = { onSelectGroup(null) },
-            text = { Text(strings.allGroups) }
-        )
-        groups.forEachIndexed { index, group ->
-            Tab(
-                selected = selectedTabIndex == index + 1,
-                onClick = { onSelectGroup(group.id) },
-                text = { Text(group.name) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun ServerCard(
-    server: ServerUiModel,
-    isFavorite: Boolean,
-    onToggleFavorite: (Int) -> Unit,
-    strings: AppStrings
-) {
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(18.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = server.name,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = server.platformLine,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    StatusBadge(
-                        server.isOnline,
-                        if (server.isOnline) strings.onlineStatus else strings.offlineStatus
-                    )
-                    TextButton(onClick = { onToggleFavorite(server.id) }) {
-                        Text(if (isFavorite) strings.followed else strings.follow)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-            InfoLine(strings.cpu, server.cpuLine)
-            InfoLine(strings.usage, server.usageLine)
-            InfoLine(strings.network, server.networkLine)
-            InfoLine(strings.traffic, server.trafficLine)
-            InfoLine(strings.connectionLabel, server.connectionLine)
-            server.planLine?.let { InfoLine(strings.plan, it) }
-            server.billingLine?.let { InfoLine(strings.billing, it) }
-            server.ipLine?.let { InfoLine(strings.ip, it) }
-            server.uptimeLine?.let { InfoLine(strings.uptime, it) }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                server.locationTag?.let { TagChip(it) }
-                server.versionTag?.let { TagChip(strings.agentVersion(it)) }
-            }
-        }
-    }
-}
-
-@Composable
-private fun StatusBadge(isOnline: Boolean, text: String) {
-    val color = if (isOnline) Color(0xFF1B8A5A) else Color(0xFFB3261E)
-    Surface(
-        color = color.copy(alpha = 0.14f),
-        shape = RoundedCornerShape(999.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(color)
-            )
-            Text(
-                text = text,
-                color = color,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-    }
-}
-
-@Composable
-private fun TagChip(text: String) {
-    Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSecondaryContainer
-        )
-    }
-}
-
-@Composable
-private fun InfoLine(label: String, value: String) {
-    Column(modifier = Modifier.padding(top = 8.dp)) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
+    GroupNavigation(groups, selectedTabIndex, onSelectGroup, strings)
 }

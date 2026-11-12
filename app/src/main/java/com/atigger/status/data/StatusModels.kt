@@ -36,8 +36,9 @@ sealed interface StatusStreamEvent {
 
 data class ServerGroupResponse(
     val success: Boolean = false,
+    @SerializedName(value = "message", alternate = ["error"])
     val message: String? = null,
-    val data: List<ServerGroupItemDto> = emptyList()
+    val data: List<ServerGroupItemDto>? = emptyList()
 )
 
 data class ServerGroupItemDto(
@@ -175,7 +176,12 @@ data class ServerUiModel(
     val ipLine: String?,
     val uptimeLine: String?,
     val locationTag: String?,
-    val versionTag: String?
+    val versionTag: String?,
+    val cpuPercent: Double? = null,
+    val memoryPercent: Double? = null,
+    val diskPercent: Double? = null,
+    val downloadSpeedText: String? = null,
+    val uploadSpeedText: String? = null
 )
 
 data class ServerGroupUiModel(
@@ -271,8 +277,18 @@ fun ServerDto.toUiModel(
         locationTag = note.customData?.location
             ?: countryCode?.uppercase(Locale.getDefault())
             ?: geoip.countryCode?.uppercase(Locale.getDefault()),
-        versionTag = host.version
+        versionTag = host.version,
+        cpuPercent = state.cpu?.takeIf { it.isFinite() && it >= 0.0 },
+        memoryPercent = resourceUsagePercent(state.memUsed, host.memTotal),
+        diskPercent = resourceUsagePercent(state.diskUsed, host.diskTotal),
+        downloadSpeedText = state.netInSpeed?.let { "${formatBytes(it)}/s" },
+        uploadSpeedText = state.netOutSpeed?.let { "${formatBytes(it)}/s" }
     )
+}
+
+internal fun resourceUsagePercent(used: Long?, total: Long?): Double? {
+    if (used == null || total == null || used < 0 || total <= 0) return null
+    return used.toDouble() / total.toDouble() * 100.0
 }
 
 fun ServerUiModel.criticalStatusText(metric: LiveUpdateMetric, strings: AppStrings): String {

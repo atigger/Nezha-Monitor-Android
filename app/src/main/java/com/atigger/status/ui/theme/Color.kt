@@ -2,10 +2,10 @@ package com.atigger.status.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val StatusBlue = Color(0xFF245CFF)
-val StatusInk = Color(0xFF10213A)
-val StatusMint = Color(0xFF1E8E5A)
+val StatusBlue = Color(0xFF5263E8)
+val StatusInk = Color(0xFF192439)
+val StatusMint = Color(0xFF138362)
 
-val StatusBlueDark = Color(0xFF9AB0FF)
-val StatusSurfaceDark = Color(0xFF101828)
-val StatusMintDark = Color(0xFF72D7A0)
+val StatusBlueDark = Color(0xFFA6B2FF)
+val StatusSurfaceDark = Color(0xFF0E1420)
+val StatusMintDark = Color(0xFF61D7AD)

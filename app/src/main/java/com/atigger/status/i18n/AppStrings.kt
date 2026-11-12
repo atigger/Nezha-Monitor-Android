@@ -8,6 +8,18 @@ class AppStrings private constructor(
     val appTitle = text("\u54ea\u5412\u72b6\u6001\u76d1\u63a7", "Nezha Monitor Android")
     fun updated(value: String) = text("\u6700\u8fd1\u66f4\u65b0 $value", "Updated $value")
     val settings = text("\u8bbe\u7f6e", "Settings")
+    val dashboardTitle = text("监控总览", "Overview")
+    val dashboardSubtitle = text("基础设施，一目了然", "Your infrastructure, at a glance")
+    val fleetTitle = text("节点概况", "FLEET STATUS")
+    val totalNodes = text("全部节点", "Total nodes")
+    val nodeDirectory = text("服务器", "Servers")
+    val liveConnection = text("实时连接", "Live feed")
+    val showDetails = text("展开详情", "Show details")
+    val hideDetails = text("收起详情", "Hide details")
+    val appearanceSection = text("显示偏好", "Preferences")
+    val authenticationSection = text("访问认证", "Authentication")
+    val settingsSubtitle = text("连接你的面板，定制你的监控空间。", "Connect your dashboard. Make monitoring yours.")
+    val followCompactHint = text("关注节点，将实时指标固定到通知栏。", "Follow a node to pin live metrics to notifications.")
     val online = text("\u4ec5\u5728\u7ebf", "Online")
     val allGroups = text("\u5168\u90e8", "All")
     val groups = text("\u5206\u7ec4", "Groups")
@@ -23,6 +35,15 @@ class AppStrings private constructor(
     )
     val monitorUrl = text("\u76d1\u63a7\u5730\u5740", "Monitor URL")
     val requireLogin = text("\u9700\u8981\u767b\u5f55", "Require Login")
+    val apiToken = text("API Token（PAT，可选）", "API Token (PAT, optional)")
+    val apiTokenHint = text(
+        "新版面板可填写 nzp_ 开头的 PAT，优先于账号密码。仅需 nezha:inventory:read 权限，无需启用 MCP。",
+        "For newer dashboards, enter an nzp_ PAT instead of a password. Requires nezha:inventory:read only; MCP is not needed."
+    )
+    val invalidApiToken = text(
+        "API Token 必须是 nzp_ 开头的 PAT，请勿填写 Bearer 前缀或空白字符。",
+        "Enter an nzp_ personal access token without the Bearer prefix or whitespace."
+    )
     val username = text("\u7528\u6237\u540d", "Username")
     val password = text("\u5bc6\u7801", "Password")
     val languageLabel = text("\u5e94\u7528\u8bed\u8a00", "App Language")

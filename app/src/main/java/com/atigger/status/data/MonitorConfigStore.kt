@@ -10,8 +10,12 @@ data class MonitorConfig(
     val username: String = "",
     val password: String = "",
     val language: AppLanguage = AppLanguage.ZH,
-    val liveUpdateMetric: LiveUpdateMetric = LiveUpdateMetric.CPU
+    val liveUpdateMetric: LiveUpdateMetric = LiveUpdateMetric.CPU,
+    val apiToken: String = ""
 ) {
+    val usesPasswordLogin: Boolean
+        get() = requiresLogin && apiToken.isBlank()
+
     val isConfigured: Boolean
         get() = normalizedBaseUrlOrNull() != null
 
@@ -55,10 +59,18 @@ data class MonitorConfig(
         val normalized = normalizedBaseUrlOrNull() ?: return strings.enterMonitorUrl
         val uri = runCatching { URI(normalized) }.getOrNull() ?: return strings.invalidMonitorUrl
         val scheme = uri.scheme?.lowercase()
-        if (scheme !in listOf("http", "https", "ws", "wss") || uri.host.isNullOrBlank()) {
+        if (scheme !in listOf("http", "https", "ws", "wss") || uri.host.isNullOrBlank() ||
+            uri.userInfo != null || uri.rawQuery != null || uri.rawFragment != null
+        ) {
             return strings.invalidMonitorUrl
         }
-        if (requiresLogin && (username.isBlank() || password.isBlank())) {
+        val token = apiToken.trim()
+        if (token.isNotEmpty() && (!token.startsWith("nzp_") || token.length <= 4 ||
+                token.any { it.code !in 33..126 })
+        ) {
+            return strings.invalidApiToken
+        }
+        if (usesPasswordLogin && (username.isBlank() || password.isBlank())) {
             return strings.loginRequiresCredentials
         }
         return null
@@ -81,6 +93,7 @@ data class MonitorConfig(
                 append(":")
                 append(uri.port)
             }
+            append(uri.rawPath.orEmpty().trimEnd('/'))
             append(path)
         }
     }
@@ -120,6 +133,7 @@ class MonitorConfigStore(
         language = preferences.getString(KEY_LANGUAGE, AppLanguage.ZH.name)
             ?.let { value -> AppLanguage.entries.find { it.name == value } }
             ?: AppLanguage.ZH,
+        apiToken = preferences.getString(KEY_API_TOKEN, "").orEmpty(),
         liveUpdateMetric = preferences.getString(KEY_LIVE_UPDATE_METRIC, LiveUpdateMetric.CPU.name)
             ?.let { value -> LiveUpdateMetric.entries.find { it.name == value } }
             ?: LiveUpdateMetric.CPU
@@ -131,6 +145,7 @@ class MonitorConfigStore(
             .putBoolean(KEY_REQUIRES_LOGIN, config.requiresLogin)
             .putString(KEY_USERNAME, config.username)
             .putString(KEY_PASSWORD, config.password)
+            .putString(KEY_API_TOKEN, config.apiToken.trim())
             .putString(KEY_LANGUAGE, config.language.name)
             .putString(KEY_LIVE_UPDATE_METRIC, config.liveUpdateMetric.name)
             .apply()
@@ -149,6 +164,7 @@ class MonitorConfigStore(
         const val KEY_REQUIRES_LOGIN = "monitor_requires_login"
         const val KEY_USERNAME = "monitor_username"
         const val KEY_PASSWORD = "monitor_password"
+        const val KEY_API_TOKEN = "monitor_api_token"
         const val KEY_LANGUAGE = "monitor_language"
         const val KEY_LIVE_UPDATE_METRIC = "live_update_metric"
 

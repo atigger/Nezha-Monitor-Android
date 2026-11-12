@@ -2,6 +2,7 @@ package com.atigger.status.data
 
 import android.util.Log
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import com.atigger.status.i18n.AppStrings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -58,16 +59,13 @@ class StatusRepository(
             val requestBuilder = Request.Builder()
                 .url(config.websocketUrl())
                 .header("User-Agent", USER_AGENT)
-
-            if (!resolvedAuthToken.isNullOrBlank()) {
-                requestBuilder.header("Cookie", "nz-jwt=$resolvedAuthToken")
-            }
+                .monitorAuthentication(config, resolvedAuthToken)
 
             val request = requestBuilder.build()
             Log.d(
                 TAG,
                 "Opening WebSocket: url=${request.url}, requiresLogin=${config.requiresLogin}, " +
-                    "hasToken=${!resolvedAuthToken.isNullOrBlank()}, headers=${request.headers}"
+                    "hasToken=${!resolvedAuthToken.isNullOrBlank()}"
             )
 
             val webSocket = webSocketClient.newWebSocket(
@@ -77,7 +75,7 @@ class StatusRepository(
                         Log.d(
                             TAG,
                             "WebSocket opened: url=${response.request.url}, code=${response.code}, " +
-                                "message=${response.message}, headers=${response.headers}"
+                                "message=${response.message}"
                         )
                         trySend(StatusStreamEvent.WaitingForFirstSnapshot)
                     }
@@ -92,15 +90,11 @@ class StatusRepository(
 
                     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                         if (closedByClient.get()) return
-                        val responseBodyPreview = runCatching {
-                            response?.peekBody(LOG_BODY_PREVIEW_LENGTH.toLong())?.string()
-                        }.getOrNull()
                         Log.e(
                             TAG,
                             "WebSocket failure: url=${response?.request?.url ?: request.url}, " +
                                 "code=${response?.code}, message=${response?.message}, " +
-                                "headers=${response?.headers}, body=$responseBodyPreview, " +
-                                "requestHeaders=${request.headers}, error=${t.message}",
+                                "error=${t.message}",
                             t
                         )
                         close(
@@ -152,6 +146,7 @@ class StatusRepository(
         }
 
     private fun authenticate(config: MonitorConfig, strings: AppStrings): String? {
+        if (config.apiToken.isNotBlank()) return config.apiToken.trim()
         if (!config.requiresLogin) return null
         val requestBody = gson.toJson(
             LoginRequest(
@@ -179,8 +174,7 @@ class StatusRepository(
             val body = response.body.string()
             Log.d(
                 TAG,
-                "Login response: url=${request.url}, code=${response.code}, message=${response.message}, " +
-                    "headers=${response.headers}, body=${body.take(LOG_BODY_PREVIEW_LENGTH)}"
+                "Login response: url=${request.url}, code=${response.code}, message=${response.message}"
             )
             if (!response.isSuccessful) {
                 throw IllegalStateException("${strings.loginFailedCheckConfig} HTTP ${response.code}")
@@ -201,7 +195,8 @@ class StatusRepository(
         strings: AppStrings,
         authToken: String?
     ): String? {
-        if (!config.requiresLogin) return null
+        if (config.apiToken.isNotBlank()) return config.apiToken.trim()
+        if (!config.usesPasswordLogin) return null
         return authToken ?: authenticate(config, strings)
     }
 
@@ -214,10 +209,7 @@ class StatusRepository(
             .header("Origin", config.originUrl())
             .header("Referer", "${config.originUrl()}/dashboard")
             .header("User-Agent", USER_AGENT)
-
-        if (!authToken.isNullOrBlank()) {
-            requestBuilder.header("Cookie", "nz-jwt=$authToken")
-        }
+            .monitorAuthentication(config, authToken)
 
         val request = requestBuilder.build()
         Log.d(
@@ -229,8 +221,7 @@ class StatusRepository(
             val body = response.body.string()
             Log.d(
                 TAG,
-                "Server group response: url=${request.url}, code=${response.code}, message=${response.message}, " +
-                    "headers=${response.headers}, body=${body.take(LOG_BODY_PREVIEW_LENGTH)}"
+                "Server group response: url=${request.url}, code=${response.code}, message=${response.message}"
             )
             if (!response.isSuccessful) {
                 throw IllegalStateException(strings.serverGroupRequestFailedHttp(response.code))
@@ -243,7 +234,7 @@ class StatusRepository(
             if (!payload.success) {
                 throw IllegalStateException(payload.message ?: strings.serverGroupRequestFailed)
             }
-            payload.data.toUiModels()
+            payload.data.orEmpty().toUiModels()
         }
     }
 
@@ -275,7 +266,6 @@ class StatusRepository(
     companion object {
         private const val TAG = "StatusRepository"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
-        private const val LOG_BODY_PREVIEW_LENGTH = 512
         private const val TIMEOUT_MS = 15000L
         private const val NORMAL_CLOSURE_STATUS = 1000
         private const val USER_AGENT =
@@ -291,6 +281,7 @@ private data class LoginRequest(
 
 private data class LoginResponse(
     val success: Boolean = false,
+    @SerializedName(value = "message", alternate = ["error"])
     val message: String? = null,
     val data: LoginTokenData? = null
 )

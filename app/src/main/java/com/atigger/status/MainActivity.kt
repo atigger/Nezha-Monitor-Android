@@ -183,16 +183,16 @@ class MainActivity : ComponentActivity() {
         streamJob?.cancel()
         settingsError = null
         uiState = StatusUiState.Loading(
-            stage = if (monitorConfig.requiresLogin) {
+            stage = if (monitorConfig.usesPasswordLogin) {
                 StatusLoadingStage.FetchingToken
             } else {
                 StatusLoadingStage.FetchingGroups
             },
-            requiresLogin = monitorConfig.requiresLogin
+            requiresLogin = monitorConfig.usesPasswordLogin
         )
         streamJob = lifecycleScope.launch {
             val strings = AppStrings.of(monitorConfig.language)
-            val tokenLoadResult = if (monitorConfig.requiresLogin) {
+            val tokenLoadResult = if (monitorConfig.usesPasswordLogin) {
                 runCatching { fetchAuthTokenWithRetries(strings) }.getOrElse { return@launch }
             } else {
                 TokenLoadResult(authToken = null, durationMs = 0L)
@@ -203,7 +203,7 @@ class MainActivity : ComponentActivity() {
             observeSnapshotsWithRetries(
                 strings = strings,
                 authToken = tokenLoadResult.authToken,
-                authDurationMs = tokenLoadResult.durationMs.takeIf { monitorConfig.requiresLogin },
+                authDurationMs = tokenLoadResult.durationMs.takeIf { monitorConfig.usesPasswordLogin },
                 groups = groups,
                 serverGroupMap = serverGroupMap,
                 groupFallbackUsed = groupLoadResult.fallbackUsed,
@@ -256,8 +256,8 @@ class MainActivity : ComponentActivity() {
                 stage = StatusLoadingStage.FetchingGroups,
                 retryCount = retryCount,
                 maxRetries = MAX_RETRY_COUNT,
-                requiresLogin = monitorConfig.requiresLogin,
-                authDurationMs = tokenLoadResult.durationMs.takeIf { monitorConfig.requiresLogin }
+                requiresLogin = monitorConfig.usesPasswordLogin,
+                authDurationMs = tokenLoadResult.durationMs.takeIf { monitorConfig.usesPasswordLogin }
             )
             try {
                 return GroupLoadResult(
@@ -380,7 +380,7 @@ class MainActivity : ComponentActivity() {
             stage = stage,
             retryCount = retryCount,
             maxRetries = MAX_RETRY_COUNT,
-            requiresLogin = monitorConfig.requiresLogin,
+            requiresLogin = monitorConfig.usesPasswordLogin,
             authDurationMs = authDurationMs,
             groupFallbackActive = groupFallbackUsed,
             groupsDurationMs = groupsDurationMs,
