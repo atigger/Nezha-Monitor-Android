@@ -4,13 +4,17 @@
 
 这个项目是面向手机端的第三方客户端，不是哪吒面板本体，也不隶属于哪吒监控官方项目组。
 
-## 2.0.0 更新
+## 2.0.1 更新
+
+- **更简洁的实况通知**：网速改为 `↓` 下载、`↑` 上传，替换 `D` / `U`，中英文保持一致。
+
+当前版本为 `2.0.1`（`versionCode = 3`），详细变更见 [CHANGELOG.md](./CHANGELOG.md)，APK 下载见 [v2.0.1 Release](https://github.com/atigger/Nezha-Monitor-Android/releases/tag/v2.0.1)。
+
+### 2.0.0 主要更新
 
 - **全新界面**：定制深浅色总览、扁平节点列表、资源占用条和可展开详情，不再堆叠默认卡片。
 - **新版哪吒兼容**：增加 Personal Access Token（PAT）认证，保留游客访问和账号密码登录。
 - **设置与安全**：重新组织连接、认证和显示设置；清理凭据日志并排除含凭据配置的系统备份。
-
-当前版本为 `2.0.0`（`versionCode = 2`），详细变更见 [CHANGELOG.md](./CHANGELOG.md)，APK 下载见 [v2.0.0 Release](https://github.com/atigger/Nezha-Monitor-Android/releases/tag/v2.0.0)。
 
 ## 功能特性
 

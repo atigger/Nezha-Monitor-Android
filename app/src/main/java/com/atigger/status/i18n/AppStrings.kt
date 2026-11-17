@@ -165,8 +165,8 @@ class AppStrings private constructor(
     fun cpuCriticalText(value: String) = "CPU $value"
     fun memoryCriticalText(value: String) = text("\u5185\u5b58 $value", "Mem $value")
     fun networkCriticalText(downValue: String?, upValue: String?): String? {
-        val downText = downValue?.let { "D$it" }
-        val upText = upValue?.let { "U$it" }
+        val downText = downValue?.let { "↓$it" }
+        val upText = upValue?.let { "↑$it" }
         return listOfNotNull(downText, upText).takeIf { it.isNotEmpty() }?.joinToString(" ")
     }
     val systemInfoUnavailable = text("\u6682\u65e0\u7cfb\u7edf\u4fe1\u606f", "No system info")
